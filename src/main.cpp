@@ -20,10 +20,11 @@
 #include <algorithm>
 #include <psp2/io/stat.h>
 
-// PS Vita OS Process Configuration: Set 2MB Main Thread Stack Size
+// PS Vita OS Process Configuration: Set 2MB Main Thread Stack Size & 64MB Heap
 extern "C" {
     unsigned int sceUserMainThreadStackSizeInBytes = 2 * 1024 * 1024;
     unsigned int sceUserMainThreadAttribute = 0;
+    unsigned int sceLibcHeapSize = 64 * 1024 * 1024; // 64 MB User Heap
 }
 
 void logBoot(const char* msg, bool overwrite = false) {

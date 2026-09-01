@@ -8,9 +8,10 @@ namespace GrooveFonts {
 
     void initFonts(ImGuiIO& io) {
         ImFontConfig config;
-        config.OversampleH = 2;
-        config.OversampleV = 2;
+        config.OversampleH = 1;
+        config.OversampleV = 1;
         config.PixelSnapH = true;
+        config.FontDataOwnedByAtlas = false; // Static memory: must NOT be freed by ImFontAtlas
 
         // Base regular font (15px)
         FontRegular = io.Fonts->AddFontFromMemoryTTF(
