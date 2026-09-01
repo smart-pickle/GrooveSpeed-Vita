@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Website](https://img.shields.io/badge/Website-smartpickle.me%2Fgroovespeed-00E5FF.svg)](https://smartpickle.me/groovespeed)
 
-**GrooveSpeed Vita** is a standalone, precision turntable speed and flutter diagnostic tool for vinyl enthusiasts and audiophiles, built natively for the PlayStation Vita (PCH-1000 OLED, PCH-2000 Slim, and PlayStation TV (why)).
+**GrooveSpeed Vita** is a standalone, precision turntable speed and flutter diagnostic tool for vinyl enthusiasts and audiophiles, built natively for the PlayStation Vita (PCH-1000 OLED, PCH-2000 Slim, and PlayStation TV (cuz whynot)).
 
 Using the PS Vita's built-in 6-axis hardware gyroscope and accelerometer (`SceMotion`), GrooveSpeed delivers laboratory-grade turntable diagnostics without requiring dedicated tachometers, optical strobe discs, or external sensors.
 
@@ -62,7 +62,7 @@ Using the PS Vita's built-in 6-axis hardware gyroscope and accelerometer (`SceMo
 Search for **GrooveSpeed** in **VitaDB Downloader** or **Vita Homebrew Browser (VHBB)** and tap Install.
 
 ### Manual Installation (.vpk)
-1. Download `GrooveSpeedVita.vpk` from the latest [GitHub Release](https://github.com/).
+1. Download `GrooveSpeedVita.vpk` from the latest [GitHub Release](https://github.com/smart-pickle/GrooveSpeed-Vita/releases/tag/vpk).
 2. Open **VitaShell** on your PS Vita.
 3. Connect your Vita to your computer via USB or FTP (press `Select` in VitaShell).
 4. Copy `GrooveSpeedVita.vpk` to `ux0:data/` (or any directory).
@@ -73,42 +73,7 @@ Search for **GrooveSpeed** in **VitaDB Downloader** or **Vita Homebrew Browser (
 
 ## 🛠️ Building from Source
 
-### Method A: Using Docker (Recommended)
-
-Docker provides a reproducible build environment without needing to install the VitaSDK toolchain locally. It works identically on **macOS**, **Linux**, and **Windows (WSL2)**.
-
-```bash
-git clone https://github.com/your-username/GrooveSpeedVita.git
-cd GrooveSpeedVita
-
-docker run --platform linux/amd64 --rm -v "$(pwd):/src" -w /src vitasdk/vitasdk bash -c "
-  export PATH=/usr/local/vitasdk/bin:\$PATH && \
-  export VITASDK=/usr/local/vitasdk && \
-  rm -rf build && mkdir build && cd build && \
-  cmake -DCMAKE_C_COMPILER=/usr/local/vitasdk/bin/arm-vita-eabi-gcc \
-        -DCMAKE_CXX_COMPILER=/usr/local/vitasdk/bin/arm-vita-eabi-g++ \
-        -DCMAKE_TOOLCHAIN_FILE=/usr/local/vitasdk/share/vita.cmake .. && \
-  make GrooveSpeedVita && \
-  vita-elf-create GrooveSpeedVita GrooveSpeedVita.velf && \
-  vita-make-fself GrooveSpeedVita.velf eboot.bin && \
-  vita-mksfoex -s TITLE_ID=\"GROOVE001\" -s APP_VER=\"01.00\" \"GrooveSpeed\" param.sfo && \
-  cd /src && \
-  vita-pack-vpk -s build/param.sfo -b build/eboot.bin \
-                -a vpk/icon0.png=sce_sys/icon0.png \
-                -a vpk/bg.png=sce_sys/livearea/contents/bg.png \
-                -a vpk/startup.png=sce_sys/livearea/contents/startup.png \
-                -a vpk/template.xml=sce_sys/livearea/contents/template.xml \
-                -a vpk/web_button.png=sce_sys/livearea/contents/web_button.png \
-                -a vpk/bgm.at9=sce_sys/livearea/contents/bgm.at9 \
-                GrooveSpeedVita.vpk
-"
-```
-
-The output package **`GrooveSpeedVita.vpk`** will be generated in your project root.
-
----
-
-### Method B: Native VitaSDK Toolchain
+###  Native VitaSDK Toolchain
 
 If you have [VitaSDK](https://vitasdk.org/) installed locally:
 
@@ -130,8 +95,6 @@ vita-pack-vpk -s build/param.sfo -b build/eboot.bin \
               -a vpk/bg.png=sce_sys/livearea/contents/bg.png \
               -a vpk/startup.png=sce_sys/livearea/contents/startup.png \
               -a vpk/template.xml=sce_sys/livearea/contents/template.xml \
-              -a vpk/web_button.png=sce_sys/livearea/contents/web_button.png \
-              -a vpk/bgm.at9=sce_sys/livearea/contents/bgm.at9 \
               GrooveSpeedVita.vpk
 ```
 
