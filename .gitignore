@@ -1,0 +1,18 @@
+# Build Artifacts
+build/
+bin/
+*.elf
+*.velf
+*.sfo
+*.vpk
+
+# OS & Editor Files
+.DS_Store
+*.swp
+*.bak
+*~
+.idea/
+.vscode/
+
+# Temporary Assets
+vpk/*copy*.png
