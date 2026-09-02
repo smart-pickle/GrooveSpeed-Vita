@@ -165,8 +165,8 @@ int main(int argc, char* argv[]) {
     float demoUnlockedToastTimer = 0.0f;
 
     // Active visualizer tab state (0: Strobe, 1: Graph, 2: Polar, 3: History)
-    int activeTab = 0;
-    int reqTab = 0;
+    int currentTab = 0;
+    int requestedTab = -1;
 
     // Reset mouse position to un-hovered state before frame 1 to prevent HoveredWindow NULL dereference
     io.MousePos = ImVec2(-FLT_MAX, -FLT_MAX);
@@ -343,14 +343,14 @@ int main(int argc, char* argv[]) {
                 else durationSeconds = 5;
             }
 
-            // 9. L1 / R1 Shoulders: Cycle Visualizer Tabs
-            if (pressed & SCE_CTRL_L1) {
+            // 9. L / R Shoulders: Cycle Visualizer Tabs (LTRIGGER/RTRIGGER for Vita handheld, L1/R1 for PSTV)
+            if (pressed & (SCE_CTRL_LTRIGGER | SCE_CTRL_L1)) {
                 sensorMgr.triggerHapticVibration(70, 70);
-                reqTab = (activeTab + 3) % 4;
+                requestedTab = (currentTab + 3) % 4;
             }
-            if (pressed & SCE_CTRL_R1) {
+            if (pressed & (SCE_CTRL_RTRIGGER | SCE_CTRL_R1)) {
                 sensorMgr.triggerHapticVibration(70, 70);
-                reqTab = (activeTab + 1) % 4;
+                requestedTab = (currentTab + 1) % 4;
             }
         }
         if (rpmWaveformHistory.size() >= 200) {
@@ -663,10 +663,9 @@ int main(int argc, char* argv[]) {
         ImGui::BeginChild("RightPanel", ImVec2(595, 485), true);
         {
             if (ImGui::BeginTabBar("VisualizerTabs")) {
-                ImGuiTabItemFlags f0 = (reqTab == 0 && activeTab != 0) ? ImGuiTabItemFlags_SetSelected : 0;
+                ImGuiTabItemFlags f0 = (requestedTab == 0) ? ImGuiTabItemFlags_SetSelected : 0;
                 if (ImGui::BeginTabItem("  Strobe Disc  ", nullptr, f0)) {
-                    activeTab = 0;
-                    reqTab = 0;
+                    currentTab = 0;
                     GrooveUI::renderStrobeRing(
                         ImGui::GetWindowDrawList(),
                         ImVec2(ImGui::GetCursorScreenPos().x + 290, ImGui::GetCursorScreenPos().y + 190),
@@ -678,10 +677,9 @@ int main(int argc, char* argv[]) {
                     ImGui::EndTabItem();
                 }
 
-                ImGuiTabItemFlags f1 = (reqTab == 1 && activeTab != 1) ? ImGuiTabItemFlags_SetSelected : 0;
+                ImGuiTabItemFlags f1 = (requestedTab == 1) ? ImGuiTabItemFlags_SetSelected : 0;
                 if (ImGui::BeginTabItem("  Live RPM Graph  ", nullptr, f1)) {
-                    activeTab = 1;
-                    reqTab = 1;
+                    currentTab = 1;
                     GrooveUI::renderRpmGraph(
                         ImGui::GetWindowDrawList(),
                         ImGui::GetCursorScreenPos(),
@@ -692,10 +690,9 @@ int main(int argc, char* argv[]) {
                     ImGui::EndTabItem();
                 }
 
-                ImGuiTabItemFlags f2 = (reqTab == 2 && activeTab != 2) ? ImGuiTabItemFlags_SetSelected : 0;
+                ImGuiTabItemFlags f2 = (requestedTab == 2) ? ImGuiTabItemFlags_SetSelected : 0;
                 if (ImGui::BeginTabItem("  Polar Plot  ", nullptr, f2)) {
-                    activeTab = 2;
-                    reqTab = 2;
+                    currentTab = 2;
                     GrooveUI::renderPolarPlot(
                         ImGui::GetWindowDrawList(),
                         ImVec2(ImGui::GetCursorScreenPos().x + 290, ImGui::GetCursorScreenPos().y + 190),
@@ -706,10 +703,9 @@ int main(int argc, char* argv[]) {
                     ImGui::EndTabItem();
                 }
 
-                ImGuiTabItemFlags f3 = (reqTab == 3 && activeTab != 3) ? ImGuiTabItemFlags_SetSelected : 0;
+                ImGuiTabItemFlags f3 = (requestedTab == 3) ? ImGuiTabItemFlags_SetSelected : 0;
                 if (ImGui::BeginTabItem("  Session History  ", nullptr, f3)) {
-                    activeTab = 3;
-                    reqTab = 3;
+                    currentTab = 3;
                     if (hasDeletedItem) {
                         ImGui::TextColored(GrooveTheme::AccentGold, "Item deleted.");
                         ImGui::SameLine();
@@ -756,6 +752,7 @@ int main(int argc, char* argv[]) {
 
                 ImGui::EndTabBar();
             }
+            requestedTab = -1; // Clear requested tab switch only AFTER the entire TabBar is evaluated
 
             // Sleek Measurement Complete Overlay Card
             if (sessionFinished) {
