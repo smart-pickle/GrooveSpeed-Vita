@@ -18,22 +18,26 @@
 #include <chrono>
 #include <string>
 #include <algorithm>
+#include <psp2/io/fcntl.h>
 #include <psp2/io/stat.h>
+#include <cstring>
 
-// PS Vita OS Process Configuration: Set 2MB Main Thread Stack Size & 64MB Heap
+// PS Vita OS Process Configuration: Set 2MB Main Thread Stack Size & 128MB VitaSDK Newlib Heap
 extern "C" {
+    int _newlib_heap_size_user = 128 * 1024 * 1024; // 128 MB VitaSDK user heap
     unsigned int sceUserMainThreadStackSizeInBytes = 2 * 1024 * 1024;
     unsigned int sceUserMainThreadAttribute = 0;
-    unsigned int sceLibcHeapSize = 64 * 1024 * 1024; // 64 MB User Heap
 }
 
 void logBoot(const char* msg, bool overwrite = false) {
     sceIoMkdir("ux0:data", 0777);
     sceIoMkdir("ux0:data/groovespeed", 0777);
-    FILE* f = fopen("ux0:/data/groovespeed/boot_log.txt", overwrite ? "w" : "a");
-    if (f) {
-        fprintf(f, "%s\n", msg);
-        fclose(f);
+    int flags = SCE_O_WRONLY | SCE_O_CREAT | (overwrite ? SCE_O_TRUNC : SCE_O_APPEND);
+    SceUID fd = sceIoOpen("ux0:data/groovespeed/boot_log.txt", flags, 0777);
+    if (fd >= 0) {
+        sceIoWrite(fd, msg, strlen(msg));
+        sceIoWrite(fd, "\n", 1);
+        sceIoClose(fd);
     }
 }
 
