@@ -239,19 +239,18 @@ int main(int argc, char* argv[]) {
                 if (released & mask) io.AddKeyEvent(key, false);
             };
 
-            // Forward to ImGui navigation
-            handleKey(SCE_CTRL_CROSS, ImGuiKey_GamepadFaceDown);
-            handleKey(SCE_CTRL_CIRCLE, ImGuiKey_GamepadFaceRight);
-            handleKey(SCE_CTRL_SQUARE, ImGuiKey_GamepadFaceLeft);
-            handleKey(SCE_CTRL_TRIANGLE, ImGuiKey_GamepadFaceUp);
-            handleKey(SCE_CTRL_UP, ImGuiKey_GamepadDpadUp);
-            handleKey(SCE_CTRL_DOWN, ImGuiKey_GamepadDpadDown);
-            handleKey(SCE_CTRL_LEFT, ImGuiKey_GamepadDpadLeft);
-            handleKey(SCE_CTRL_RIGHT, ImGuiKey_GamepadDpadRight);
-            handleKey(SCE_CTRL_L1, ImGuiKey_GamepadL1);
-            handleKey(SCE_CTRL_R1, ImGuiKey_GamepadR1);
-            handleKey(SCE_CTRL_START, ImGuiKey_GamepadStart);
-            handleKey(SCE_CTRL_SELECT, ImGuiKey_GamepadBack);
+            bool modalOpen = wizard.isOpen() || infoDlg.isOpen();
+
+            // Forward navigation keys to ImGui ONLY when a modal popup is open.
+            // On the main dashboard, this prevents ImGui TabBar from hijacking D-Pad Left/Right.
+            if (modalOpen) {
+                handleKey(SCE_CTRL_CROSS, ImGuiKey_GamepadFaceDown);
+                handleKey(SCE_CTRL_CIRCLE, ImGuiKey_GamepadFaceRight);
+                handleKey(SCE_CTRL_UP, ImGuiKey_GamepadDpadUp);
+                handleKey(SCE_CTRL_DOWN, ImGuiKey_GamepadDpadDown);
+                handleKey(SCE_CTRL_LEFT, ImGuiKey_GamepadDpadLeft);
+                handleKey(SCE_CTRL_RIGHT, ImGuiKey_GamepadDpadRight);
+            }
 
             // Direct Dedicated Hardware Actions
             // 1. Cross (X): Start or Cancel Measurement

@@ -17,6 +17,48 @@ void InfoDialog::render() {
         
         if (ImGui::BeginTabBar("InfoTabs")) {
             
+            // Tab 0: PS Vita Hardware Controls & Shortcuts
+            if (ImGui::BeginTabItem("PS Vita Controls")) {
+                ImGui::TextColored(GrooveTheme::AccentTeal, "PHYSICAL BUTTON SHORTCUTS & TOUCH CONTROLS");
+                ImGui::Separator();
+                ImGui::Spacing();
+
+                if (ImGui::BeginTable("ControlsTable", 3, ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+                    ImGui::TableSetupColumn("Button", ImGuiTableColumnFlags_WidthFixed, 150.0f);
+                    ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthFixed, 200.0f);
+                    ImGui::TableSetupColumn("Details", ImGuiTableColumnFlags_WidthStretch);
+                    ImGui::TableHeadersRow();
+
+                    auto renderRow = [](const char* btn, const ImVec4& color, const char* action, const char* details) {
+                        ImGui::TableNextRow();
+                        ImGui::TableNextColumn();
+                        ImGui::TextColored(color, "%s", btn);
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted(action);
+                        ImGui::TableNextColumn();
+                        ImGui::TextColored(GrooveTheme::TextMuted, "%s", details);
+                    };
+
+                    renderRow("[ X ] Cross", GrooveTheme::AccentTeal, "Start / Cancel Test", "Starts 3s countdown if flat; prompts calibration if tilted");
+                    renderRow("[ (O) ] Circle", GrooveTheme::AccentRed, "Back / Close Dialog", "Dismisses active popups or cancels running measurement");
+                    renderRow("[ [ ] ] Square", GrooveTheme::AccentGold, "Toggle Auto-Start", "Arms or disarms automatic trigger on stable RPM");
+                    renderRow("[ / \\ ] Triangle", GrooveTheme::AccentGreen, "Calibration Wizard", "Opens or closes the 2-step Gyro / Level calibrator");
+                    renderRow("[ D-Pad Left / Right ]", GrooveTheme::AccentTeal, "Cycle Target RPM", "Switches between 33 1/3, 45, and 78 RPM modes");
+                    renderRow("[ D-Pad Up / Down ]", GrooveTheme::AccentTeal, "Cycle Duration", "Switches test length (5s, 10s, 15s, 30s)");
+                    renderRow("[ L1 / R1 Shoulders ]", GrooveTheme::AccentGold, "Switch Visualizer Tabs", "Cycles Strobe Disc, Live Graph, Polar Plot, History");
+                    renderRow("[ START ]", GrooveTheme::AccentGreen, "Quick Start / Stop", "Instantly starts or stops measurement session");
+                    renderRow("[ SELECT ]", GrooveTheme::AccentTeal, "Open / Close Manual", "Toggles this Guide & Info dialog");
+
+                    ImGui::EndTable();
+                }
+
+                ImGui::Spacing();
+                ImGui::TextColored(GrooveTheme::AccentTeal, "TOUCHSCREEN GESTURES");
+                ImGui::BulletText("Tap any button, pill, or tab directly on the capacitive screen.");
+                ImGui::BulletText("Tap GROOVESPEED title 7 times quickly to reveal the hidden Demo Mode.");
+                ImGui::EndTabItem();
+            }
+
             // Tab 1: How to Measure
             if (ImGui::BeginTabItem("Mounting & Setup")) {
                 ImGui::TextColored(GrooveTheme::AccentTeal, "TURNTABLE MOUNTING INSTRUCTIONS");
