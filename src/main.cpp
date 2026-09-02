@@ -22,9 +22,9 @@
 #include <psp2/io/stat.h>
 #include <cstring>
 
-// PS Vita OS Process Configuration: Set 2MB Main Thread Stack Size & 128MB VitaSDK Newlib Heap
+// PS Vita OS Process Configuration: Set 2MB Main Thread Stack Size & 32MB Contiguous Heap
 extern "C" {
-    int _newlib_heap_size_user = 128 * 1024 * 1024; // 128 MB VitaSDK user heap
+    unsigned int _newlib_heap_size_user = 32 * 1024 * 1024; // 32 MB contiguous user heap
     unsigned int sceUserMainThreadStackSizeInBytes = 2 * 1024 * 1024;
     unsigned int sceUserMainThreadAttribute = 0;
 }
