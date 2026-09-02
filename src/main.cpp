@@ -164,6 +164,10 @@ int main(int argc, char* argv[]) {
     bool showDemoButton = false;
     float demoUnlockedToastTimer = 0.0f;
 
+    // Active visualizer tab state (0: Strobe, 1: Graph, 2: Polar, 3: History)
+    int activeTab = 0;
+    int reqTab = 0;
+
     // Reset mouse position to un-hovered state before frame 1 to prevent HoveredWindow NULL dereference
     io.MousePos = ImVec2(-FLT_MAX, -FLT_MAX);
     printf("[GrooveSpeed] Entering main render loop...\n"); fflush(stdout);
@@ -218,7 +222,12 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        // Direct PS Vita Physical Button Polling
+        // Update sensors before processing inputs
+        sensorMgr.setDemoTargetRpm(targetSpeed);
+        sensorMgr.update(deltaTime);
+        SensorData data = sensorMgr.getData();
+
+        // Direct PS Vita Physical Button Polling & Dedicated Hotkeys
         SceCtrlData pad;
         if (sceCtrlPeekBufferPositive(0, &pad, 1) > 0) {
             uint32_t pressed = pad.buttons & ~lastButtons;
@@ -230,10 +239,11 @@ int main(int argc, char* argv[]) {
                 if (released & mask) io.AddKeyEvent(key, false);
             };
 
-            handleKey(SCE_CTRL_CROSS, ImGuiKey_GamepadFaceDown);     // Cross: Select / Click
-            handleKey(SCE_CTRL_CIRCLE, ImGuiKey_GamepadFaceRight);   // Circle: Back / Cancel
-            handleKey(SCE_CTRL_SQUARE, ImGuiKey_GamepadFaceLeft);    // Square
-            handleKey(SCE_CTRL_TRIANGLE, ImGuiKey_GamepadFaceUp);    // Triangle
+            // Forward to ImGui navigation
+            handleKey(SCE_CTRL_CROSS, ImGuiKey_GamepadFaceDown);
+            handleKey(SCE_CTRL_CIRCLE, ImGuiKey_GamepadFaceRight);
+            handleKey(SCE_CTRL_SQUARE, ImGuiKey_GamepadFaceLeft);
+            handleKey(SCE_CTRL_TRIANGLE, ImGuiKey_GamepadFaceUp);
             handleKey(SCE_CTRL_UP, ImGuiKey_GamepadDpadUp);
             handleKey(SCE_CTRL_DOWN, ImGuiKey_GamepadDpadDown);
             handleKey(SCE_CTRL_LEFT, ImGuiKey_GamepadDpadLeft);
@@ -242,12 +252,108 @@ int main(int argc, char* argv[]) {
             handleKey(SCE_CTRL_R1, ImGuiKey_GamepadR1);
             handleKey(SCE_CTRL_START, ImGuiKey_GamepadStart);
             handleKey(SCE_CTRL_SELECT, ImGuiKey_GamepadBack);
+
+            // Direct Dedicated Hardware Actions
+            // 1. Cross (X): Start or Cancel Measurement
+            if (pressed & SCE_CTRL_CROSS) {
+                sensorMgr.triggerHapticVibration(80, 80);
+                if (countdownSeconds > 0) {
+                    countdownSeconds = 0;
+                } else if (isMeasuring) {
+                    isMeasuring = false;
+                } else if (!wizard.isOpen() && !infoDlg.isOpen()) {
+                    if (data.isFlat) {
+                        countdownSeconds = 3;
+                        countdownTimer = 0.0f;
+                    } else {
+                        wizard.open();
+                    }
+                }
+            }
+
+            // 2. Circle (O): Close dialogs or cancel measurement
+            if (pressed & SCE_CTRL_CIRCLE) {
+                sensorMgr.triggerHapticVibration(60, 60);
+                if (wizard.isOpen()) {
+                    wizard.close();
+                } else if (infoDlg.isOpen()) {
+                    infoDlg.close();
+                } else if (isMeasuring) {
+                    isMeasuring = false;
+                }
+            }
+
+            // 3. Square ([]): Toggle Auto-Start
+            if (pressed & SCE_CTRL_SQUARE) {
+                autoStartEnabled = !autoStartEnabled;
+                sensorMgr.triggerHapticVibration(80, 80);
+            }
+
+            // 4. Triangle (/ \): Open / Close Calibration Wizard
+            if (pressed & SCE_CTRL_TRIANGLE) {
+                sensorMgr.triggerHapticVibration(80, 80);
+                if (wizard.isOpen()) wizard.close(); else wizard.open();
+            }
+
+            // 5. Select: Toggle Info / Manual Dialog
+            if (pressed & SCE_CTRL_SELECT) {
+                sensorMgr.triggerHapticVibration(80, 80);
+                if (infoDlg.isOpen()) infoDlg.close(); else infoDlg.open();
+            }
+
+            // 6. Start: Start or Cancel Measurement
+            if (pressed & SCE_CTRL_START) {
+                sensorMgr.triggerHapticVibration(100, 100);
+                if (countdownSeconds > 0) {
+                    countdownSeconds = 0;
+                } else if (isMeasuring) {
+                    isMeasuring = false;
+                } else if (data.isFlat) {
+                    countdownSeconds = 3;
+                    countdownTimer = 0.0f;
+                }
+            }
+
+            // 7. D-Pad Left / Right: Cycle Target Speed (33 1/3 <-> 45 <-> 78 RPM)
+            if (pressed & SCE_CTRL_LEFT) {
+                sensorMgr.triggerHapticVibration(60, 60);
+                if (std::abs(targetSpeed - 78.0f) < 0.1f) targetSpeed = 45.0f;
+                else if (std::abs(targetSpeed - 45.0f) < 0.1f) targetSpeed = 33.33f;
+                else targetSpeed = 78.0f;
+            }
+            if (pressed & SCE_CTRL_RIGHT) {
+                sensorMgr.triggerHapticVibration(60, 60);
+                if (std::abs(targetSpeed - 33.33f) < 0.1f) targetSpeed = 45.0f;
+                else if (std::abs(targetSpeed - 45.0f) < 0.1f) targetSpeed = 78.0f;
+                else targetSpeed = 33.33f;
+            }
+
+            // 8. D-Pad Up / Down: Cycle Duration (5s <-> 10s <-> 15s <-> 30s)
+            if (pressed & SCE_CTRL_UP) {
+                sensorMgr.triggerHapticVibration(60, 60);
+                if (durationSeconds == 30) durationSeconds = 15;
+                else if (durationSeconds == 15) durationSeconds = 10;
+                else if (durationSeconds == 10) durationSeconds = 5;
+                else durationSeconds = 30;
+            }
+            if (pressed & SCE_CTRL_DOWN) {
+                sensorMgr.triggerHapticVibration(60, 60);
+                if (durationSeconds == 5) durationSeconds = 10;
+                else if (durationSeconds == 10) durationSeconds = 15;
+                else if (durationSeconds == 15) durationSeconds = 30;
+                else durationSeconds = 5;
+            }
+
+            // 9. L1 / R1 Shoulders: Cycle Visualizer Tabs
+            if (pressed & SCE_CTRL_L1) {
+                sensorMgr.triggerHapticVibration(70, 70);
+                reqTab = (activeTab + 3) % 4;
+            }
+            if (pressed & SCE_CTRL_R1) {
+                sensorMgr.triggerHapticVibration(70, 70);
+                reqTab = (activeTab + 1) % 4;
+            }
         }
-
-        sensorMgr.setDemoTargetRpm(targetSpeed);
-        sensorMgr.update(deltaTime);
-        SensorData data = sensorMgr.getData();
-
         if (rpmWaveformHistory.size() >= 200) {
             rpmWaveformHistory.erase(rpmWaveformHistory.begin());
         }
@@ -332,6 +438,7 @@ int main(int argc, char* argv[]) {
         // 6. Render ImGui Frame (CRITICAL ORDER: SDLRenderer2 NewFrame -> SDL2 NewFrame -> NewFrame)
         ImGui_ImplSDLRenderer2_NewFrame();
         ImGui_ImplSDL2_NewFrame();
+        io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
         ImGui::NewFrame();
 
         ImGui::SetNextWindowPos(ImVec2(0, 0));
@@ -557,7 +664,10 @@ int main(int argc, char* argv[]) {
         ImGui::BeginChild("RightPanel", ImVec2(595, 485), true);
         {
             if (ImGui::BeginTabBar("VisualizerTabs")) {
-                if (ImGui::BeginTabItem("  Strobe Disc  ")) {
+                ImGuiTabItemFlags f0 = (reqTab == 0 && activeTab != 0) ? ImGuiTabItemFlags_SetSelected : 0;
+                if (ImGui::BeginTabItem("  Strobe Disc  ", nullptr, f0)) {
+                    activeTab = 0;
+                    reqTab = 0;
                     GrooveUI::renderStrobeRing(
                         ImGui::GetWindowDrawList(),
                         ImVec2(ImGui::GetCursorScreenPos().x + 290, ImGui::GetCursorScreenPos().y + 190),
@@ -569,7 +679,10 @@ int main(int argc, char* argv[]) {
                     ImGui::EndTabItem();
                 }
 
-                if (ImGui::BeginTabItem("  Live RPM Graph  ")) {
+                ImGuiTabItemFlags f1 = (reqTab == 1 && activeTab != 1) ? ImGuiTabItemFlags_SetSelected : 0;
+                if (ImGui::BeginTabItem("  Live RPM Graph  ", nullptr, f1)) {
+                    activeTab = 1;
+                    reqTab = 1;
                     GrooveUI::renderRpmGraph(
                         ImGui::GetWindowDrawList(),
                         ImGui::GetCursorScreenPos(),
@@ -580,7 +693,10 @@ int main(int argc, char* argv[]) {
                     ImGui::EndTabItem();
                 }
 
-                if (ImGui::BeginTabItem("  Polar Plot  ")) {
+                ImGuiTabItemFlags f2 = (reqTab == 2 && activeTab != 2) ? ImGuiTabItemFlags_SetSelected : 0;
+                if (ImGui::BeginTabItem("  Polar Plot  ", nullptr, f2)) {
+                    activeTab = 2;
+                    reqTab = 2;
                     GrooveUI::renderPolarPlot(
                         ImGui::GetWindowDrawList(),
                         ImVec2(ImGui::GetCursorScreenPos().x + 290, ImGui::GetCursorScreenPos().y + 190),
@@ -591,7 +707,10 @@ int main(int argc, char* argv[]) {
                     ImGui::EndTabItem();
                 }
 
-                if (ImGui::BeginTabItem("  Session History  ")) {
+                ImGuiTabItemFlags f3 = (reqTab == 3 && activeTab != 3) ? ImGuiTabItemFlags_SetSelected : 0;
+                if (ImGui::BeginTabItem("  Session History  ", nullptr, f3)) {
+                    activeTab = 3;
+                    reqTab = 3;
                     if (hasDeletedItem) {
                         ImGui::TextColored(GrooveTheme::AccentGold, "Item deleted.");
                         ImGui::SameLine();
