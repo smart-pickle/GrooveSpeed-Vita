@@ -193,30 +193,27 @@ int main(int argc, char* argv[]) {
 
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_FINGERDOWN || event.type == SDL_FINGERMOTION) {
-                float sx = event.tfinger.x * 960.0f;
-                float sy = event.tfinger.y * 544.0f;
-                io.AddMousePosEvent(sx, sy);
-                if (event.type == SDL_FINGERDOWN) io.AddMouseButtonEvent(0, true);
-            } else if (event.type == SDL_FINGERUP) {
-                io.AddMouseButtonEvent(0, false);
+            // Forward non-touch events to ImGui (handles desktop mouse in Vita3K emulator and system events)
+            if (event.type != SDL_FINGERDOWN && event.type != SDL_FINGERUP && event.type != SDL_FINGERMOTION) {
+                ImGui_ImplSDL2_ProcessEvent(&event);
             }
-            ImGui_ImplSDL2_ProcessEvent(&event);
             if (event.type == SDL_QUIT) running = false;
         }
 
-        // Direct PS Vita Hardware Touch Polling (100% reliable)
+        // Direct PS Vita Hardware Touch Polling (100% responsive, instant single-tap)
         SceTouchData touchData;
         if (sceTouchPeek(SCE_TOUCH_PORT_FRONT, &touchData, 1) > 0) {
             if (touchData.reportNum > 0) {
                 float touchX = (float)touchData.report[0].x * (960.0f / 1920.0f);
                 float touchY = (float)touchData.report[0].y * (544.0f / 1088.0f);
+                io.AddMouseSourceEvent(ImGuiMouseSource_TouchScreen);
                 io.AddMousePosEvent(touchX, touchY);
                 if (!wasTouching) {
                     io.AddMouseButtonEvent(0, true);
                     wasTouching = true;
                 }
             } else if (wasTouching) {
+                io.AddMouseSourceEvent(ImGuiMouseSource_TouchScreen);
                 io.AddMouseButtonEvent(0, false);
                 wasTouching = false;
             }
@@ -527,7 +524,7 @@ int main(int argc, char* argv[]) {
         // -------------------------------------------------------------
         // LEFT CONTROL & TELEMETRY PANEL (330px x 485px, ZERO SCROLL)
         // -------------------------------------------------------------
-        ImGui::BeginChild("LeftPanel", ImVec2(330, 485), true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+        ImGui::BeginChild("LeftPanel", ImVec2(330, 485), true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoNavFocus);
         {
             // 1. HERO RPM & TELEMETRY CARD
             ImGui::PushStyleColor(ImGuiCol_ChildBg, GrooveTheme::CardElevated);
@@ -660,7 +657,7 @@ int main(int argc, char* argv[]) {
         // -------------------------------------------------------------
         // RIGHT VISUALIZER & HISTORY PANEL (595px x 485px)
         // -------------------------------------------------------------
-        ImGui::BeginChild("RightPanel", ImVec2(595, 485), true);
+        ImGui::BeginChild("RightPanel", ImVec2(595, 485), true, ImGuiWindowFlags_NoNavFocus);
         {
             if (ImGui::BeginTabBar("VisualizerTabs")) {
                 ImGuiTabItemFlags f0 = (requestedTab == 0) ? ImGuiTabItemFlags_SetSelected : 0;
