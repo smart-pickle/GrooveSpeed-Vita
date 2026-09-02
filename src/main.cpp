@@ -20,6 +20,8 @@
 #include <algorithm>
 #include <psp2/io/fcntl.h>
 #include <psp2/io/stat.h>
+#include <psp2/touch.h>
+#include <psp2/ctrl.h>
 #include <cstring>
 
 // PS Vita OS Process Configuration: Set 2MB Main Thread Stack Size & 32MB Contiguous Heap
@@ -43,6 +45,10 @@ void logBoot(const char* msg, bool overwrite = false) {
 
 int main(int argc, char* argv[]) {
     logBoot("[GrooveSpeed] App starting main()", true);
+
+    // Initialize hardware touch and controller sampling
+    sceCtrlSetSamplingMode(SCE_CTRL_MODE_ANALOG_WIDE);
+    sceTouchSetSamplingState(SCE_TOUCH_PORT_FRONT, SCE_TOUCH_SAMPLING_STATE_START);
 
     // Set touch & mouse interaction hints for PS Vita
     SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "1");
@@ -88,6 +94,7 @@ int main(int argc, char* argv[]) {
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     io.IniFilename = nullptr; // Prevent read-only app0:/imgui.ini write crash
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad; // Full PS Vita controller navigation
     GrooveFonts::initFonts(io);
     logBoot("[GrooveSpeed] Custom TrueType fonts initialized.");
 
@@ -164,6 +171,9 @@ int main(int argc, char* argv[]) {
     // 5. Main Event & Render Loop
     bool running = true;
     int frameNum = 0;
+    bool wasTouching = false;
+    uint32_t lastButtons = 0;
+
     while (running) {
         frameNum++;
         if (frameNum <= 5) {
@@ -179,8 +189,59 @@ int main(int argc, char* argv[]) {
 
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_FINGERDOWN || event.type == SDL_FINGERMOTION) {
+                float sx = event.tfinger.x * 960.0f;
+                float sy = event.tfinger.y * 544.0f;
+                io.AddMousePosEvent(sx, sy);
+                if (event.type == SDL_FINGERDOWN) io.AddMouseButtonEvent(0, true);
+            } else if (event.type == SDL_FINGERUP) {
+                io.AddMouseButtonEvent(0, false);
+            }
             ImGui_ImplSDL2_ProcessEvent(&event);
             if (event.type == SDL_QUIT) running = false;
+        }
+
+        // Direct PS Vita Hardware Touch Polling (100% reliable)
+        SceTouchData touchData;
+        if (sceTouchPeek(SCE_TOUCH_PORT_FRONT, &touchData, 1) > 0) {
+            if (touchData.reportNum > 0) {
+                float touchX = (float)touchData.report[0].x * (960.0f / 1920.0f);
+                float touchY = (float)touchData.report[0].y * (544.0f / 1088.0f);
+                io.AddMousePosEvent(touchX, touchY);
+                if (!wasTouching) {
+                    io.AddMouseButtonEvent(0, true);
+                    wasTouching = true;
+                }
+            } else if (wasTouching) {
+                io.AddMouseButtonEvent(0, false);
+                wasTouching = false;
+            }
+        }
+
+        // Direct PS Vita Physical Button Polling
+        SceCtrlData pad;
+        if (sceCtrlPeekBufferPositive(0, &pad, 1) > 0) {
+            uint32_t pressed = pad.buttons & ~lastButtons;
+            uint32_t released = ~pad.buttons & lastButtons;
+            lastButtons = pad.buttons;
+
+            auto handleKey = [&](uint32_t mask, ImGuiKey key) {
+                if (pressed & mask) io.AddKeyEvent(key, true);
+                if (released & mask) io.AddKeyEvent(key, false);
+            };
+
+            handleKey(SCE_CTRL_CROSS, ImGuiKey_GamepadFaceDown);     // Cross: Select / Click
+            handleKey(SCE_CTRL_CIRCLE, ImGuiKey_GamepadFaceRight);   // Circle: Back / Cancel
+            handleKey(SCE_CTRL_SQUARE, ImGuiKey_GamepadFaceLeft);    // Square
+            handleKey(SCE_CTRL_TRIANGLE, ImGuiKey_GamepadFaceUp);    // Triangle
+            handleKey(SCE_CTRL_UP, ImGuiKey_GamepadDpadUp);
+            handleKey(SCE_CTRL_DOWN, ImGuiKey_GamepadDpadDown);
+            handleKey(SCE_CTRL_LEFT, ImGuiKey_GamepadDpadLeft);
+            handleKey(SCE_CTRL_RIGHT, ImGuiKey_GamepadDpadRight);
+            handleKey(SCE_CTRL_L1, ImGuiKey_GamepadL1);
+            handleKey(SCE_CTRL_R1, ImGuiKey_GamepadR1);
+            handleKey(SCE_CTRL_START, ImGuiKey_GamepadStart);
+            handleKey(SCE_CTRL_SELECT, ImGuiKey_GamepadBack);
         }
 
         sensorMgr.setDemoTargetRpm(targetSpeed);
