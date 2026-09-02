@@ -46,6 +46,7 @@ target_compile_options(${PROJECT_NAME} PRIVATE
 )
 
 target_link_options(${PROJECT_NAME} PRIVATE
+    -Wl,-q
     -Wl,--gc-sections
 )
 
@@ -72,22 +73,3 @@ target_link_libraries(${PROJECT_NAME}
     m
     -Wl,--end-group
 )
-
-vita_create_self(${PROJECT_NAME}.self ${PROJECT_NAME})
-
-# Bundle VPK with LiveArea icon0.png and bg.png if present
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vpk/icon0.png")
-    vita_create_vpk(${PROJECT_NAME}.vpk ${VITA_TITLEID} ${PROJECT_NAME}.self
-        NAME ${VITA_APP_NAME}
-        VERSION ${VITA_VERSION}
-        ICON0 ${CMAKE_CURRENT_SOURCE_DIR}/vpk/icon0.png
-        BG ${CMAKE_CURRENT_SOURCE_DIR}/vpk/bg.png
-        STARTUP ${CMAKE_CURRENT_SOURCE_DIR}/vpk/startup.png
-        TEMPLATE ${CMAKE_CURRENT_SOURCE_DIR}/vpk/template.xml
-    )
-else()
-    vita_create_vpk(${PROJECT_NAME}.vpk ${VITA_TITLEID} ${PROJECT_NAME}.self
-        NAME ${VITA_APP_NAME}
-        VERSION ${VITA_VERSION}
-    )
-endif()
