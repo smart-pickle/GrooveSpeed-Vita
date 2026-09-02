@@ -84,36 +84,32 @@ int main(int argc, char* argv[]) {
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     io.IniFilename = nullptr; // Prevent read-only app0:/imgui.ini write crash
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad; // Full PS Vita controller navigation
     GrooveFonts::initFonts(io);
-    printf("[GrooveSpeed] Custom TrueType fonts initialized.\n"); fflush(stdout);
+    logBoot("[GrooveSpeed] Custom TrueType fonts initialized.");
 
     GrooveTheme::applyTheme();
-    printf("[GrooveSpeed] Theme applied.\n"); fflush(stdout);
+    logBoot("[GrooveSpeed] Theme applied.");
 
-    if (SDL_NumJoysticks() > 0) {
-        SDL_JoystickOpen(0);
-    }
-
+    // Note: Use Manual Gamepad Mode to prevent SDL_GameControllerMapping crash on physical PS Vita
     ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
-    ImGui_ImplSDL2_SetGamepadMode(ImGui_ImplSDL2_GamepadMode_AutoFirst, nullptr, 0);
+    ImGui_ImplSDL2_SetGamepadMode(ImGui_ImplSDL2_GamepadMode_Manual, nullptr, 0);
     ImGui_ImplSDLRenderer2_Init(renderer);
     logBoot("[GrooveSpeed] ImGui backends initialized.");
 
     // Ensure data directories exist on ux0:
     StorageManager::ensureDataDirectory();
     StorageManager::ensurePictureDirectory();
-    printf("[GrooveSpeed] Directories checked.\n"); fflush(stdout);
+    logBoot("[GrooveSpeed] Storage directories checked.");
 
     // 4. Initialize Hardware & Settings
     TurntableSensorManager sensorMgr;
     sensorMgr.init();
-    printf("[GrooveSpeed] Sensor manager initialized.\n"); fflush(stdout);
+    logBoot("[GrooveSpeed] Sensor manager initialized.");
 
     CalibrationConfig savedCal = StorageManager::loadCalibration();
     sensorMgr.setGyroZeroBias(savedCal.gyroZeroBias);
     sensorMgr.setCalibrationOffset(savedCal.calibrationOffset);
-    printf("[GrooveSpeed] Calibration loaded.\n"); fflush(stdout);
+    logBoot("[GrooveSpeed] Calibration loaded.");
 
     DspEngine dsp;
     CalibrationWizard wizard;
@@ -122,7 +118,7 @@ int main(int argc, char* argv[]) {
     // Session History Cache
     std::vector<SessionRecord> cachedHistory = StorageManager::loadHistory();
     bool historyNeedsReload = false;
-    printf("[GrooveSpeed] History loaded (%zu items).\n", cachedHistory.size()); fflush(stdout);
+    logBoot("[GrooveSpeed] History loaded.");
 
     // History Deletion & Undo State
     SessionRecord lastDeletedRecord{};
@@ -619,6 +615,9 @@ int main(int argc, char* argv[]) {
         SDL_RenderClear(renderer);
         ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
         SDL_RenderPresent(renderer);
+        if (frameNum == 1) {
+            logBoot("[GrooveSpeed] Frame 1 rendered successfully!");
+        }
     }
 
     // 8. Cleanup & Shutdown
