@@ -59,6 +59,14 @@ private:
 
     // Orientation tracking
     float m_accumulatedAngle = 0.0f;
+
+    // Dynamic DC accelerometer tracking for AC vibration / rumble decoupling
+    bool m_accelInitialized = false;
+    float m_accelDcX = 0.0f;
+    float m_accelDcY = 0.0f;
+    float m_accelDcZ = -1.0f;
+    float m_smoothedWobble = 0.0f;
+    float m_smoothedRumble = 0.0f;
 };
 
 #endif // SENSOR_MANAGER_HPP

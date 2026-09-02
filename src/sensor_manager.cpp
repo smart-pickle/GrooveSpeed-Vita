@@ -129,10 +129,54 @@ void TurntableSensorManager::update(float deltaTime) {
     m_data.currentOrientation = std::fmod(m_accumulatedAngle, 360.0f);
     if (m_data.currentOrientation < 0.0f) m_data.currentOrientation += 360.0f;
 
-    // 4. Platter Wobble & Motor Rumble
-    // Earth gravity on PS Vita Z-axis is -1.0g when lying face-up flat.
-    // Dynamic wobble is the deviation from static 1.0g magnitude.
-    float verticalDev = std::abs(std::abs(state.acceleration.z) - 1.0f);
-    m_data.platterWobble = (m_data.rpm > 1.0f) ? verticalDev : (verticalDev * 0.1f);
-    m_data.motorRumble = std::sqrt(state.acceleration.x * state.acceleration.x + state.acceleration.y * state.acceleration.y);
+    // 4. Platter Wobble & Motor Rumble (AC-Coupled High-Pass Filtering & Speed Gating)
+    // Tracks running DC gravity vector to decouple static shelf/table tilt
+    if (!m_accelInitialized) {
+        m_accelDcX = state.acceleration.x;
+        m_accelDcY = state.acceleration.y;
+        m_accelDcZ = state.acceleration.z;
+        m_accelInitialized = true;
+    } else {
+        // Slow time constant (~1-2s) to track static orientation without absorbing mechanical vibrations
+        const float dcAlpha = 0.02f;
+        m_accelDcX = dcAlpha * state.acceleration.x + (1.0f - dcAlpha) * m_accelDcX;
+        m_accelDcY = dcAlpha * state.acceleration.y + (1.0f - dcAlpha) * m_accelDcY;
+        m_accelDcZ = dcAlpha * state.acceleration.z + (1.0f - dcAlpha) * m_accelDcZ;
+    }
+
+    // AC vibration component for Motor Rumble (subtracts static gravity vector completely)
+    float acX = state.acceleration.x - m_accelDcX;
+    float acY = state.acceleration.y - m_accelDcY;
+    float acZ = state.acceleration.z - m_accelDcZ;
+    float acMagnitude = std::sqrt(acX * acX + acY * acY + acZ * acZ);
+    float netRumble = std::max(0.0f, acMagnitude - 0.003f);
+
+    // Dynamic Platter Wobble (cyclic variation from static equilibrium magnitude)
+    float currentTotalAccel = std::sqrt(
+        state.acceleration.x * state.acceleration.x +
+        state.acceleration.y * state.acceleration.y +
+        state.acceleration.z * state.acceleration.z
+    );
+    float staticTotalAccel = std::sqrt(
+        m_accelDcX * m_accelDcX +
+        m_accelDcY * m_accelDcY +
+        m_accelDcZ * m_accelDcZ
+    );
+    float rawWobble = std::abs(currentTotalAccel - staticTotalAccel);
+    float netWobble = std::max(0.0f, rawWobble - 0.002f);
+
+    // Speed Gating: When turntable is motionless or stopped (< 5 RPM), clamp meters to 0.000g
+    if (m_data.rpm < 5.0f) {
+        m_smoothedWobble = 0.0f;
+        m_smoothedRumble = 0.0f;
+        m_data.platterWobble = 0.0f;
+        m_data.motorRumble = 0.0f;
+    } else {
+        // Smooth fade-in between 5.0 and 10.0 RPM
+        float fade = std::min(1.0f, (m_data.rpm - 5.0f) / 5.0f);
+        m_smoothedWobble = 0.1f * netWobble + 0.9f * m_smoothedWobble;
+        m_smoothedRumble = 0.1f * netRumble + 0.9f * m_smoothedRumble;
+        m_data.platterWobble = m_smoothedWobble * fade;
+        m_data.motorRumble = m_smoothedRumble * fade;
+    }
 }
