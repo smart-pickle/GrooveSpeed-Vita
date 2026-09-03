@@ -73,3 +73,40 @@ target_link_libraries(${PROJECT_NAME}
     m
     -Wl,--end-group
 )
+
+# -------------------------------------------------------------
+# VitaSDK Standard Packaging: ELF -> eboot.bin -> VPK
+# -------------------------------------------------------------
+vita_create_self(eboot.bin ${PROJECT_NAME} STRIPPED)
+
+vita_create_vpk(${PROJECT_NAME}.vpk ${VITA_TITLEID} eboot.bin
+    VERSION ${VITA_VERSION}
+    NAME ${VITA_APP_NAME}
+    FILE ${CMAKE_CURRENT_SOURCE_DIR}/vpk/icon0.png sce_sys/icon0.png
+    FILE ${CMAKE_CURRENT_SOURCE_DIR}/vpk/bg.png sce_sys/livearea/contents/bg.png
+    FILE ${CMAKE_CURRENT_SOURCE_DIR}/vpk/startup.png sce_sys/livearea/contents/startup.png
+    FILE ${CMAKE_CURRENT_SOURCE_DIR}/vpk/template.xml sce_sys/livearea/contents/template.xml
+    FILE ${CMAKE_CURRENT_SOURCE_DIR}/vpk/web_button.png sce_sys/livearea/contents/web_button.png
+    FILE ${CMAKE_CURRENT_SOURCE_DIR}/vpk/bgm.at9 sce_sys/livearea/contents/bgm.at9
+    FILE ${CMAKE_CURRENT_SOURCE_DIR}/vpk/manual/001.png sce_sys/manual/001.png
+    FILE ${CMAKE_CURRENT_SOURCE_DIR}/vpk/manual/002.png sce_sys/manual/002.png
+    FILE ${CMAKE_CURRENT_SOURCE_DIR}/vpk/manual/003.png sce_sys/manual/003.png
+    FILE ${CMAKE_CURRENT_SOURCE_DIR}/vpk/manual/004.png sce_sys/manual/004.png
+)
+
+# Mirror output VPK to project root directory
+if(TARGET ${PROJECT_NAME}.vpk-vpk)
+    add_custom_command(TARGET ${PROJECT_NAME}.vpk-vpk POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.vpk"
+            "${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}.vpk"
+        COMMENT "Mirroring ${PROJECT_NAME}.vpk to project root"
+    )
+elseif(TARGET ${PROJECT_NAME}.vpk)
+    add_custom_command(TARGET ${PROJECT_NAME}.vpk POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.vpk"
+            "${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}.vpk"
+        COMMENT "Mirroring ${PROJECT_NAME}.vpk to project root"
+    )
+endif()

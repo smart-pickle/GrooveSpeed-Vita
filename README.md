@@ -73,29 +73,24 @@ Search for **GrooveSpeed** in **VitaDB Downloader** or **Vita Homebrew Browser (
 
 ## 🛠️ Building from Source
 
-###  Native VitaSDK Toolchain
+### Native VitaSDK Toolchain
 
-If you have [VitaSDK](https://vitasdk.org/) installed locally:
+With [VitaSDK](https://vitasdk.org/) installed:
 
 ```bash
-export VITASDK=/usr/local/vitasdk
-export PATH=$VITASDK/bin:$PATH
+cmake -B build -DCMAKE_TOOLCHAIN_FILE=$VITASDK/share/vita.toolchain.cmake
+cmake --build build
+```
 
-mkdir build && cd build
-cmake -DCMAKE_TOOLCHAIN_FILE=$VITASDK/share/vita.cmake ..
-make GrooveSpeedVita
+This single command automatically compiles the executable, generates `eboot.bin` and `param.sfo`, packages `GrooveSpeedVita.vpk` with all LiveArea assets, and mirrors it directly to the repository root.
 
-vita-elf-create GrooveSpeedVita GrooveSpeedVita.velf
-vita-make-fself GrooveSpeedVita.velf eboot.bin
-vita-mksfoex -s TITLE_ID="GROOVE001" -s APP_VER="01.00" "GrooveSpeed" param.sfo
+### Via Docker (No Local Toolchain Required)
 
-cd ..
-vita-pack-vpk -s build/param.sfo -b build/eboot.bin \
-              -a vpk/icon0.png=sce_sys/icon0.png \
-              -a vpk/bg.png=sce_sys/livearea/contents/bg.png \
-              -a vpk/startup.png=sce_sys/livearea/contents/startup.png \
-              -a vpk/template.xml=sce_sys/livearea/contents/template.xml \
-              GrooveSpeedVita.vpk
+```bash
+docker run --platform linux/amd64 --rm -v "$(pwd):/src" -w /src vitasdk/vitasdk bash -c "
+  cmake -B build -DCMAKE_TOOLCHAIN_FILE=/usr/local/vitasdk/share/vita.toolchain.cmake &&
+  cmake --build build
+"
 ```
 
 ---
