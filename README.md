@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Website](https://img.shields.io/badge/Website-smartpickle.me%2Fgroovespeed-00E5FF.svg)](https://smartpickle.me/groovespeed)
 
-**GrooveSpeed Vita** is a standalone, precision turntable speed and flutter diagnostic tool for vinyl enthusiasts and audiophiles, built natively for the PlayStation Vita (PCH-1000 OLED, PCH-2000 Slim, and PlayStation TV (cuz whynot)).
+**GrooveSpeed Vita** is a standalone, precision turntable speed and flutter diagnostic tool for vinyl enthusiasts and audiophiles, built natively for the PlayStation Vita (PCH-1000 OLED, PCH-2000 Slim, and PlayStation TV (please don't use it on Playstation TV).
 
 Using the PS Vita's built-in 6-axis hardware gyroscope and accelerometer (`SceMotion`), GrooveSpeed delivers laboratory-grade turntable diagnostics without requiring dedicated tachometers, optical strobe discs, or external sensors.
 
