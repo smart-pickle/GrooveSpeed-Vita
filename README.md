@@ -84,14 +84,6 @@ cmake --build build
 
 This single command automatically compiles the executable, generates `eboot.bin` and `param.sfo`, packages `GrooveSpeedVita.vpk` with all LiveArea assets, and mirrors it directly to the repository root.
 
-### Via Docker (No Local Toolchain Required)
-
-```bash
-docker run --platform linux/amd64 --rm -v "$(pwd):/src" -w /src vitasdk/vitasdk bash -c "
-  cmake -B build -DCMAKE_TOOLCHAIN_FILE=/usr/local/vitasdk/share/vita.toolchain.cmake &&
-  cmake --build build
-"
-```
 
 ---
 
