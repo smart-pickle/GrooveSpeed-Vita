@@ -27,6 +27,13 @@ bool TurntableSensorManager::init() {
     if (res >= 0) {
         m_isSampling = true;
     }
+
+    // 3. Disable game-oriented auto-nulling & deadband for scientific turntable diagnostics
+    // By default, SceMotion assumes constant non-zero angular velocity on a flat surface
+    // is thermal gyro drift and subtracts it over time, causing RPM to decay to 0.
+    sceMotionSetGyroBiasCorrection(0);
+    sceMotionSetDeadband(0);
+
     // Physical hardware sensors active by default
     m_demoMode = false;
     return true;
@@ -50,9 +57,14 @@ void TurntableSensorManager::calibrateZeroGyro() {
     const int numSamples = 50;
 
     for (int i = 0; i < numSamples; ++i) {
-        SceMotionState state;
-        if (sceMotionGetState(&state) >= 0) {
-            sumWz += state.angularVelocity.z;
+        SceMotionSensorState sensorState{};
+        if (sceMotionGetSensorState(&sensorState, 1) >= 0) {
+            sumWz += sensorState.gyro.z;
+        } else {
+            SceMotionState state{};
+            if (sceMotionGetState(&state) >= 0) {
+                sumWz += state.angularVelocity.z;
+            }
         }
     }
 
@@ -93,27 +105,39 @@ void TurntableSensorManager::update(float deltaTime) {
         return;
     }
 
-    // Physical Hardware Sensor path
+    // Physical Hardware Sensor path:
+    // Read direct raw hardware sensor registers first (immune to OS drift-cancellation)
+    SceMotionSensorState sensorState{};
+    bool hasRawSensor = (sceMotionGetSensorState(&sensorState, 1) >= 0);
+
     SceMotionState state{};
-    if (sceMotionGetState(&state) < 0) {
+    bool hasMotionState = (sceMotionGetState(&state) >= 0);
+
+    if (!hasRawSensor && !hasMotionState) {
         // Switch to demo mode if sensor query fails
         m_demoMode = true;
         return;
     }
 
+    // Prefer raw hardware registers, fallback to motion state
+    float accelX = hasRawSensor ? sensorState.accelerometer.x : state.acceleration.x;
+    float accelY = hasRawSensor ? sensorState.accelerometer.y : state.acceleration.y;
+    float accelZ = hasRawSensor ? sensorState.accelerometer.z : state.acceleration.z;
+    float gyroZ  = hasRawSensor ? sensorState.gyro.z : state.angularVelocity.z;
+
     // 1. Check if device is laying reasonably flat (gravity vector on Z)
     float accelMagnitude = std::sqrt(
-        state.acceleration.x * state.acceleration.x +
-        state.acceleration.y * state.acceleration.y +
-        state.acceleration.z * state.acceleration.z
+        accelX * accelX +
+        accelY * accelY +
+        accelZ * accelZ
     );
 
     // 1.0g on Z axis indicates flat placement
-    float zRatio = std::abs(state.acceleration.z) / (accelMagnitude > 0.001f ? accelMagnitude : 1.0f);
+    float zRatio = std::abs(accelZ) / (accelMagnitude > 0.001f ? accelMagnitude : 1.0f);
     m_data.isFlat = (zRatio > 0.85f); // Angle < 30 degrees from horizontal
 
     // 2. Gyroscope Z-axis angular velocity -> RPM
-    float radPerSecZ = std::abs(state.angularVelocity.z - m_gyroZeroBias);
+    float radPerSecZ = std::abs(gyroZ - m_gyroZeroBias);
     float rawCalculatedRpm = (radPerSecZ * 60.0f) / (2.0f * M_PI) + m_calibrationOffset;
 
     m_data.rawRpm = rawCalculatedRpm;
@@ -132,30 +156,30 @@ void TurntableSensorManager::update(float deltaTime) {
     // 4. Platter Wobble & Motor Rumble (AC-Coupled High-Pass Filtering & Speed Gating)
     // Tracks running DC gravity vector to decouple static shelf/table tilt
     if (!m_accelInitialized) {
-        m_accelDcX = state.acceleration.x;
-        m_accelDcY = state.acceleration.y;
-        m_accelDcZ = state.acceleration.z;
+        m_accelDcX = accelX;
+        m_accelDcY = accelY;
+        m_accelDcZ = accelZ;
         m_accelInitialized = true;
     } else {
         // Slow time constant (~1-2s) to track static orientation without absorbing mechanical vibrations
         const float dcAlpha = 0.02f;
-        m_accelDcX = dcAlpha * state.acceleration.x + (1.0f - dcAlpha) * m_accelDcX;
-        m_accelDcY = dcAlpha * state.acceleration.y + (1.0f - dcAlpha) * m_accelDcY;
-        m_accelDcZ = dcAlpha * state.acceleration.z + (1.0f - dcAlpha) * m_accelDcZ;
+        m_accelDcX = dcAlpha * accelX + (1.0f - dcAlpha) * m_accelDcX;
+        m_accelDcY = dcAlpha * accelY + (1.0f - dcAlpha) * m_accelDcY;
+        m_accelDcZ = dcAlpha * accelZ + (1.0f - dcAlpha) * m_accelDcZ;
     }
 
     // AC vibration component for Motor Rumble (subtracts static gravity vector completely)
-    float acX = state.acceleration.x - m_accelDcX;
-    float acY = state.acceleration.y - m_accelDcY;
-    float acZ = state.acceleration.z - m_accelDcZ;
+    float acX = accelX - m_accelDcX;
+    float acY = accelY - m_accelDcY;
+    float acZ = accelZ - m_accelDcZ;
     float acMagnitude = std::sqrt(acX * acX + acY * acY + acZ * acZ);
     float netRumble = std::max(0.0f, acMagnitude - 0.003f);
 
     // Dynamic Platter Wobble (cyclic variation from static equilibrium magnitude)
     float currentTotalAccel = std::sqrt(
-        state.acceleration.x * state.acceleration.x +
-        state.acceleration.y * state.acceleration.y +
-        state.acceleration.z * state.acceleration.z
+        accelX * accelX +
+        accelY * accelY +
+        accelZ * accelZ
     );
     float staticTotalAccel = std::sqrt(
         m_accelDcX * m_accelDcX +
