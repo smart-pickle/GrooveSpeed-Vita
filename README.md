@@ -62,7 +62,7 @@ Using the PS Vita's built-in 6-axis hardware gyroscope and accelerometer (`SceMo
 Search for **GrooveSpeed** in **VitaDB Downloader** or **Vita Homebrew Browser (VHBB)** and tap Install.
 
 ### Manual Installation (.vpk)
-1. Download `GrooveSpeedVita.vpk` from the latest [GitHub Release](https://github.com/smart-pickle/GrooveSpeed-Vita/releases/tag/vpk).
+1. Download `GrooveSpeedVita.vpk` from the latest [GitHub Release](https://github.com/smart-pickle/GrooveSpeed-Vita/releases/).
 2. Open **VitaShell** on your PS Vita.
 3. Connect your Vita to your computer via USB or FTP (press `Select` in VitaShell).
 4. Copy `GrooveSpeedVita.vpk` to `ux0:data/` (or any directory).
