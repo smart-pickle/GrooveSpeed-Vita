@@ -96,4 +96,4 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 ## 🌐 Community & Links
 
 * **Official Website**: [smartpickle.me/groovespeed](https://smartpickle.me/groovespeed)
-* **VitaDB**: [vitadb.rinnegatamante.it](https://vitadb.rinnegatamante.it/)
+* **VitaDB**: [https://www.rinnegatamante.eu/vitadb/#/](https://www.rinnegatamante.eu/vitadb/#/)
